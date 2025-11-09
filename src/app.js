@@ -34,10 +34,11 @@ app.get('/health', (req, res) => {
 // API routes
 const authRoutes = require('./routes/auth');
 const investmentRoutes = require('./routes/investments');
+const returnsRoutes = require('./routes/returns');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
-// app.use('/api/returns', returnsRoutes);
+app.use('/api/returns', returnsRoutes);
 // app.use('/api/transactions', transactionRoutes);
 // app.use('/api/reports', reportRoutes);
 
