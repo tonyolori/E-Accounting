@@ -35,11 +35,12 @@ app.get('/health', (req, res) => {
 const authRoutes = require('./routes/auth');
 const investmentRoutes = require('./routes/investments');
 const returnsRoutes = require('./routes/returns');
+const transactionRoutes = require('./routes/transactions');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
 app.use('/api/returns', returnsRoutes);
-// app.use('/api/transactions', transactionRoutes);
+app.use('/api/transactions', transactionRoutes);
 // app.use('/api/reports', reportRoutes);
 
 // 404 handler for unmatched routes
