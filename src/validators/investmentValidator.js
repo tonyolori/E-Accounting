@@ -289,11 +289,11 @@ const queryFiltersSchema = Joi.object({
     }),
 
   sortBy: Joi.string()
-    .valid('name', 'createdAt', 'updatedAt', 'startDate', 'principalAmount', 'currentBalance')
+    .valid('name', 'createdAt', 'updatedAt', 'startDate', 'initialAmount', 'currentBalance')
     .default('createdAt')
     .optional()
     .messages({
-      'any.only': 'Sort field must be one of: name, createdAt, updatedAt, startDate, principalAmount, currentBalance'
+      'any.only': 'Sort field must be one of: name, createdAt, updatedAt, startDate, initialAmount, currentBalance'
     }),
 
   sortOrder: Joi.string()

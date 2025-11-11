@@ -221,7 +221,7 @@ function calculateFutureValueWithContributions(initialPrincipal, monthlyContribu
 
 /**
  * Calculate portfolio performance metrics
- * @param {Array} investments - Array of investment objects with { principalAmount, currentBalance }
+ * @param {Array} investments - Array of investment objects with { initialAmount, currentBalance }
  * @returns {Object} Portfolio performance metrics
  */
 function calculatePortfolioMetrics(investments) {
@@ -247,7 +247,7 @@ function calculatePortfolioMetrics(investments) {
 
   // Calculate totals and find best/worst performing investments
   investments.forEach((investment, index) => {
-    const principal = parseFloat(investment.principalAmount) || 0;
+    const principal = parseFloat(investment.initialAmount) || 0;
     const current = parseFloat(investment.currentBalance) || 0;
     const returnPercentage = principal > 0 ? ((current - principal) / principal) * 100 : 0;
 

@@ -111,7 +111,7 @@ async function runComprehensiveTests() {
       const investmentData = {
         name: 'Test Investment Portfolio',
         category: 'STOCKS',
-        principalAmount: 10000,
+        initialAmount: 10000,
         returnType: 'VARIABLE',
         interestRate: 8.5,
         startDate: new Date().toISOString().split('T')[0],
@@ -362,7 +362,7 @@ async function runComprehensiveTests() {
     // Test 20: Input Validation
     try {
       await axios.post(`${BASE_URL}/api/investments`, 
-        { name: '', principalAmount: -100 }, 
+        { name: '', initialAmount: -100 }, 
         authRequest({ headers: { 'Content-Type': 'application/json' } })
       );
       logTest('Input Validation', false, 'Should have failed with validation error');

@@ -117,7 +117,7 @@ This document provides a granular, step-by-step implementation plan for building
 2. Define Investment model:
    - id, userId (String, relation to User)
    - name, category (String)
-   - principalAmount, currentBalance (Decimal)
+   - initialAmount, currentBalance (Decimal)
    - returnType (enum: FIXED, VARIABLE)
    - interestRate (Decimal?, optional)
    - startDate, endDate (DateTime?)
@@ -236,7 +236,7 @@ This document provides a granular, step-by-step implementation plan for building
    - createInvestment schema:
      - name (required, string, max 255)
      - category (required, string)
-     - principalAmount (required, positive number)
+     - initialAmount (required, positive number)
      - returnType (required, enum: 'fixed', 'variable')
      - interestRate (optional, for fixed type)
      - startDate (required, valid date)
@@ -254,7 +254,7 @@ This document provides a granular, step-by-step implementation plan for building
 1. Create `src/services/investmentService.js`:
    - createInvestment function:
      - Validate user ownership
-     - Set currentBalance = principalAmount initially
+     - Set currentBalance = initialAmount initially
      - Set default status to ACTIVE
      - Create investment record
    - getUserInvestments function with filtering

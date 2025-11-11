@@ -22,13 +22,13 @@ async function createInvestment(userId, investmentData) {
       notes
     } = investmentData;
 
-    // Create investment with currentBalance = principalAmount initially
+    // Create investment with currentBalance = initialAmount initially
     const investment = await prisma.investment.create({
       data: {
         userId,
         name: name.trim(),
         category: category.trim(),
-        principalAmount: initialAmount,
+        initialAmount: initialAmount,
         currentBalance: initialAmount, // Set initial balance to principal
         returnType,
         interestRate: returnType === 'FIXED' ? interestRate : null,
@@ -41,7 +41,7 @@ async function createInvestment(userId, investmentData) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -141,7 +141,7 @@ async function getUserInvestments(userId, filters = {}) {
           id: true,
           name: true,
           category: true,
-          principalAmount: true,
+          initialAmount: true,
           currentBalance: true,
           returnType: true,
           interestRate: true,
@@ -207,7 +207,7 @@ async function getInvestmentById(investmentId, userId) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -323,7 +323,7 @@ async function updateInvestment(investmentId, userId, updateData) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -416,7 +416,7 @@ async function updateInvestmentStatus(investmentId, userId, statusData) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -501,7 +501,7 @@ async function updateInvestmentBalance(investmentId, userId, balanceData) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -540,7 +540,7 @@ async function getInvestmentSummary(userId) {
     const summary = await prisma.investment.aggregate({
       where: { userId },
       _sum: {
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true
       },
       _count: {
@@ -567,9 +567,9 @@ async function getInvestmentSummary(userId) {
 
     return {
       totalInvestments: summary._count._all || 0,
-      totalPrincipal: summary._sum.principalAmount || 0,
+      totalPrincipal: summary._sum.initialAmount || 0,
       totalCurrentValue: summary._sum.currentBalance || 0,
-      totalReturns: (summary._sum.currentBalance || 0) - (summary._sum.principalAmount || 0),
+      totalReturns: (summary._sum.currentBalance || 0) - (summary._sum.initialAmount || 0),
       statusBreakdown: statusSummary
     };
   } catch (error) {

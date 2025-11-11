@@ -41,7 +41,7 @@ async function addManualReturn(investmentId, userId, returnData) {
           id: true,
           name: true,
           currentBalance: true,
-          principalAmount: true,
+          initialAmount: true,
           status: true,
           returnType: true,
           interestRate: true
@@ -131,7 +131,7 @@ async function addManualReturn(investmentId, userId, returnData) {
           id: true,
           name: true,
           category: true,
-          principalAmount: true,
+          initialAmount: true,
           currentBalance: true,
           returnType: true,
           interestRate: true,
@@ -321,7 +321,7 @@ async function calculateProjectedReturns(investmentId, userId, projectionParams 
         id: true,
         name: true,
         currentBalance: true,
-        principalAmount: true,
+        initialAmount: true,
         returnType: true,
         interestRate: true,
         startDate: true,
@@ -365,14 +365,14 @@ async function calculateProjectedReturns(investmentId, userId, projectionParams 
     // Calculate current performance metrics
     const investmentAge = calculateYearsBetween(investment.startDate, new Date());
     const currentPerformance = calculateReturnPercentage(
-      investment.principalAmount,
+      investment.initialAmount,
       investment.currentBalance
     );
 
     let annualizedReturn = 0;
     if (investmentAge > 0) {
       const annualizedCalc = calculateAnnualizedReturn(
-        investment.principalAmount,
+        investment.initialAmount,
         investment.currentBalance,
         investmentAge
       );
@@ -425,7 +425,7 @@ async function calculateProjectedReturns(investmentId, userId, projectionParams 
         id: investment.id,
         name: investment.name,
         currentBalance: investment.currentBalance,
-        principalAmount: investment.principalAmount,
+        initialAmount: investment.initialAmount,
         returnType: investment.returnType,
         interestRate: investment.interestRate
       },

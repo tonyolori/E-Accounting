@@ -156,7 +156,7 @@ const getQuickStatsHandler = asyncHandler(async (req, res) => {
     require('../config/database').prisma.investment.aggregate({
       where: { userId: req.user.id },
       _sum: {
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true
       },
       _count: {
@@ -181,7 +181,7 @@ const getQuickStatsHandler = asyncHandler(async (req, res) => {
     })
   ]);
 
-  const totalPrincipal = investmentSummary._sum.principalAmount || 0;
+  const totalPrincipal = investmentSummary._sum.initialAmount || 0;
   const totalCurrentValue = investmentSummary._sum.currentBalance || 0;
   const totalReturns = totalCurrentValue - totalPrincipal;
   const returnPercentage = totalPrincipal > 0 ? (totalReturns / totalPrincipal) * 100 : 0;
@@ -247,7 +247,7 @@ const getInvestmentComparisonHandler = asyncHandler(async (req, res) => {
       id: true,
       name: true,
       category: true,
-      principalAmount: true,
+      initialAmount: true,
       currentBalance: true,
       returnType: true,
       interestRate: true,
@@ -272,20 +272,20 @@ const getInvestmentComparisonHandler = asyncHandler(async (req, res) => {
   // Calculate comparison metrics
   const comparison = investments.map(investment => {
     const returnCalc = require('../utils/calculations').calculateReturnPercentage(
-      parseFloat(investment.principalAmount),
+      parseFloat(investment.initialAmount),
       parseFloat(investment.currentBalance)
     );
     
     const age = require('../utils/calculations').calculateYearsBetween(investment.startDate, new Date());
     const annualizedReturn = age > 0 
-      ? (Math.pow(parseFloat(investment.currentBalance) / parseFloat(investment.principalAmount), 1 / age) - 1) * 100
+      ? (Math.pow(parseFloat(investment.currentBalance) / parseFloat(investment.initialAmount), 1 / age) - 1) * 100
       : 0;
 
     return {
       id: investment.id,
       name: investment.name,
       category: investment.category,
-      principalAmount: parseFloat(investment.principalAmount),
+      initialAmount: parseFloat(investment.initialAmount),
       currentBalance: parseFloat(investment.currentBalance),
       absoluteReturn: returnCalc.absoluteReturn,
       returnPercentage: returnCalc.returnPercentage,

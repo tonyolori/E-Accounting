@@ -14,7 +14,7 @@ async function getDashboardData(userId) {
     const investmentSummary = await prisma.investment.aggregate({
       where: { userId },
       _sum: {
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true
       },
       _count: {
@@ -27,7 +27,7 @@ async function getDashboardData(userId) {
       by: ['status'],
       where: { userId },
       _sum: {
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true
       },
       _count: {
@@ -86,7 +86,7 @@ async function getDashboardData(userId) {
       select: {
         id: true,
         name: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         status: true,
@@ -95,18 +95,18 @@ async function getDashboardData(userId) {
     });
 
     const investmentsWithReturns = allInvestments.map(investment => {
-      const returnPercentage = investment.principalAmount > 0 
-        ? ((investment.currentBalance - investment.principalAmount) / investment.principalAmount) * 100 
+      const returnPercentage = investment.initialAmount > 0 
+        ? ((investment.currentBalance - investment.initialAmount) / investment.initialAmount) * 100 
         : 0;
 
       const investmentAge = calculateYearsBetween(investment.startDate, new Date());
       const annualizedReturn = investmentAge > 0 
-        ? (Math.pow(investment.currentBalance / investment.principalAmount, 1 / investmentAge) - 1) * 100
+        ? (Math.pow(investment.currentBalance / investment.initialAmount, 1 / investmentAge) - 1) * 100
         : 0;
 
       return {
         ...investment,
-        absoluteReturn: investment.currentBalance - investment.principalAmount,
+        absoluteReturn: investment.currentBalance - investment.initialAmount,
         returnPercentage,
         annualizedReturn
       };
@@ -119,7 +119,7 @@ async function getDashboardData(userId) {
       .slice(0, 5);
 
     // Calculate total returns
-    const totalPrincipal = investmentSummary._sum.principalAmount || 0;
+    const totalPrincipal = investmentSummary._sum.initialAmount || 0;
     const totalCurrentValue = investmentSummary._sum.currentBalance || 0;
     const totalReturns = totalCurrentValue - totalPrincipal;
     const portfolioReturnPercentage = totalPrincipal > 0 ? (totalReturns / totalPrincipal) * 100 : 0;
@@ -128,9 +128,9 @@ async function getDashboardData(userId) {
     const formattedStatusBreakdown = statusBreakdown.reduce((acc, item) => {
       acc[item.status.toLowerCase()] = {
         count: item._count._all || 0,
-        principal: item._sum.principalAmount || 0,
+        principal: item._sum.initialAmount || 0,
         currentValue: item._sum.currentBalance || 0,
-        returns: (item._sum.currentBalance || 0) - (item._sum.principalAmount || 0)
+        returns: (item._sum.currentBalance || 0) - (item._sum.initialAmount || 0)
       };
       return acc;
     }, {
@@ -183,7 +183,7 @@ async function getPortfolioSummary(userId) {
         id: true,
         name: true,
         category: true,
-        principalAmount: true,
+        initialAmount: true,
         currentBalance: true,
         returnType: true,
         interestRate: true,
@@ -238,9 +238,9 @@ async function getPortfolioSummary(userId) {
       }
       const categoryData = categoryMap.get(category);
       categoryData.count += 1;
-      categoryData.principal += parseFloat(investment.principalAmount);
+      categoryData.principal += parseFloat(investment.initialAmount);
       categoryData.currentValue += parseFloat(investment.currentBalance);
-      categoryData.returns += parseFloat(investment.currentBalance) - parseFloat(investment.principalAmount);
+      categoryData.returns += parseFloat(investment.currentBalance) - parseFloat(investment.initialAmount);
     });
 
     const categoryBreakdown = Array.from(categoryMap.values()).map(category => ({
@@ -260,18 +260,18 @@ async function getPortfolioSummary(userId) {
     // Enrich investments with calculated metrics
     const enrichedInvestments = investments.map(investment => {
       const returnCalc = calculateReturnPercentage(
-        parseFloat(investment.principalAmount),
+        parseFloat(investment.initialAmount),
         parseFloat(investment.currentBalance)
       );
       
       const age = calculateYearsBetween(investment.startDate, new Date());
       const annualizedReturn = age > 0 
-        ? (Math.pow(parseFloat(investment.currentBalance) / parseFloat(investment.principalAmount), 1 / age) - 1) * 100
+        ? (Math.pow(parseFloat(investment.currentBalance) / parseFloat(investment.initialAmount), 1 / age) - 1) * 100
         : 0;
 
       return {
         ...investment,
-        principalAmount: parseFloat(investment.principalAmount),
+        initialAmount: parseFloat(investment.initialAmount),
         currentBalance: parseFloat(investment.currentBalance),
         absoluteReturn: returnCalc.absoluteReturn,
         returnPercentage: returnCalc.returnPercentage,

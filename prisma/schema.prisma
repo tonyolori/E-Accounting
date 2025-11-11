@@ -25,7 +25,7 @@ model Investment {
   userId          String
   name            String
   category        String
-  principalAmount Decimal          @db.Decimal(15, 2)
+  initialAmount Decimal          @db.Decimal(15, 2)
   currentBalance  Decimal          @db.Decimal(15, 2)
   returnType      ReturnType
   interestRate    Decimal?         @db.Decimal(5, 4)
