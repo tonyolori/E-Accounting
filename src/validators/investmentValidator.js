@@ -26,15 +26,15 @@ const createInvestmentSchema = Joi.object({
       'any.required': 'Investment category is required'
     }),
 
-  principalAmount: Joi.number()
+  initialAmount: Joi.number()
     .positive()
     .precision(2)
     .max(999999999999.99) // 15 digits total, 2 decimal places
     .required()
     .messages({
-      'number.positive': 'Principal amount must be a positive number',
-      'number.max': 'Principal amount is too large',
-      'any.required': 'Principal amount is required'
+      'number.positive': 'Initial amount must be a positive number',
+      'number.max': 'Initial amount is too large',
+      'any.required': 'Initial amount is required'
     }),
 
   returnType: Joi.string()
@@ -123,14 +123,14 @@ const updateInvestmentSchema = Joi.object({
       'string.max': 'Category must be less than 100 characters'
     }),
 
-  principalAmount: Joi.number()
+  initialAmount: Joi.number()
     .positive()
     .precision(2)
     .max(999999999999.99)
     .optional()
     .messages({
-      'number.positive': 'Principal amount must be a positive number',
-      'number.max': 'Principal amount is too large'
+      'number.positive': 'Initial amount must be a positive number',
+      'number.max': 'Initial amount is too large'
     }),
 
   returnType: Joi.string()

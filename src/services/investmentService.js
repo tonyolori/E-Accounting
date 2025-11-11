@@ -14,7 +14,7 @@ async function createInvestment(userId, investmentData) {
     const {
       name,
       category,
-      principalAmount,
+      initialAmount,
       returnType,
       interestRate,
       startDate,
@@ -28,8 +28,8 @@ async function createInvestment(userId, investmentData) {
         userId,
         name: name.trim(),
         category: category.trim(),
-        principalAmount,
-        currentBalance: principalAmount, // Set initial balance to principal
+        principalAmount: initialAmount,
+        currentBalance: initialAmount, // Set initial balance to principal
         returnType,
         interestRate: returnType === 'FIXED' ? interestRate : null,
         startDate: new Date(startDate),
