@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { calculatePortfolioMetrics, calculateReturnPercentage, calculateYearsBetween } = require('../utils/calculations');
+const { DEFAULT_BASE, normalizeCurrency, convertAmount, getRatesAt } = require('../utils/currency');
 
 /**
  * Get comprehensive dashboard data for user
@@ -8,7 +9,7 @@ const { calculatePortfolioMetrics, calculateReturnPercentage, calculateYearsBetw
  * @returns {Object} Dashboard data with all key metrics
  * @throws {AppError} If calculation fails
  */
-async function getDashboardData(userId) {
+async function getDashboardData(userId, options = {}) {
   try {
     // Get user investments summary
     const investmentSummary = await prisma.investment.aggregate({
@@ -118,11 +119,28 @@ async function getDashboardData(userId) {
       .sort((a, b) => b.returnPercentage - a.returnPercentage)
       .slice(0, 5);
 
-    // Calculate total returns
+    // Calculate total returns (native)
     const totalPrincipal = investmentSummary._sum.initialAmount || 0;
     const totalCurrentValue = investmentSummary._sum.currentBalance || 0;
     const totalReturns = totalCurrentValue - totalPrincipal;
     const portfolioReturnPercentage = totalPrincipal > 0 ? (totalReturns / totalPrincipal) * 100 : 0;
+
+    // Base-currency totals
+    const baseCurrency = normalizeCurrency(options.baseCurrency || DEFAULT_BASE);
+    const ratesAt = getRatesAt();
+    const investmentsForBase = await prisma.investment.findMany({
+      where: { userId },
+      select: { initialAmount: true, currentBalance: true, currency: true }
+    });
+    let totalPrincipalBase = 0;
+    let totalCurrentValueBase = 0;
+    for (const inv of investmentsForBase) {
+      const p = convertAmount(parseFloat(inv.initialAmount), inv.currency, baseCurrency);
+      const c = convertAmount(parseFloat(inv.currentBalance), inv.currency, baseCurrency);
+      totalPrincipalBase += p || 0;
+      totalCurrentValueBase += c || 0;
+    }
+    const totalReturnsBase = totalCurrentValueBase - totalPrincipalBase;
 
     // Format status breakdown
     const formattedStatusBreakdown = statusBreakdown.reduce((acc, item) => {
@@ -145,7 +163,12 @@ async function getDashboardData(userId) {
         totalPrincipal,
         totalCurrentValue,
         totalReturns,
-        returnPercentage: portfolioReturnPercentage
+        returnPercentage: portfolioReturnPercentage,
+        baseCurrency,
+        ratesAt,
+        totalPrincipalBase,
+        totalCurrentValueBase,
+        totalReturnsBase
       },
       statusBreakdown: formattedStatusBreakdown,
       recentActivity: {
@@ -174,7 +197,7 @@ async function getDashboardData(userId) {
  * @returns {Object} Portfolio summary with detailed metrics
  * @throws {AppError} If calculation fails
  */
-async function getPortfolioSummary(userId) {
+async function getPortfolioSummary(userId, options = {}) {
   try {
     // Get all user investments with transaction counts
     const investments = await prisma.investment.findMany({
@@ -183,6 +206,7 @@ async function getPortfolioSummary(userId) {
         id: true,
         name: true,
         category: true,
+        currency: true,
         initialAmount: true,
         currentBalance: true,
         returnType: true,
@@ -281,6 +305,18 @@ async function getPortfolioSummary(userId) {
       };
     });
 
+    // Base-currency totals
+    const baseCurrency = normalizeCurrency(options.baseCurrency || DEFAULT_BASE);
+    const ratesAt = getRatesAt();
+    let totalPrincipalBase = 0;
+    let totalCurrentValueBase = 0;
+    for (const inv of investments) {
+      const p = convertAmount(parseFloat(inv.initialAmount), inv.currency || baseCurrency, baseCurrency);
+      const c = convertAmount(parseFloat(inv.currentBalance), inv.currency || baseCurrency, baseCurrency);
+      totalPrincipalBase += p || 0;
+      totalCurrentValueBase += c || 0;
+    }
+
     return {
       summary: {
         totalInvestments: portfolioMetrics.numberOfInvestments,
@@ -288,7 +324,12 @@ async function getPortfolioSummary(userId) {
         totalCurrentValue: portfolioMetrics.totalCurrentValue,
         totalReturns: portfolioMetrics.totalReturns,
         returnPercentage: portfolioMetrics.returnPercentage,
-        averageReturn: portfolioMetrics.averageReturn
+        averageReturn: portfolioMetrics.averageReturn,
+        baseCurrency,
+        ratesAt,
+        totalPrincipalBase,
+        totalCurrentValueBase,
+        totalReturnsBase: totalCurrentValueBase - totalPrincipalBase
       },
       categoryBreakdown,
       performanceMetrics: {

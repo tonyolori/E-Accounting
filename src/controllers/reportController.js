@@ -15,8 +15,13 @@ const Joi = require('joi');
  * @access Private
  */
 const getDashboardHandler = asyncHandler(async (req, res) => {
-  // Get dashboard data
-  const dashboardData = await getDashboardData(req.user.id);
+  const { baseCurrency } = req.query;
+  const options = {};
+  if (baseCurrency && /^[A-Za-z]{3}$/.test(baseCurrency)) {
+    options.baseCurrency = baseCurrency.toUpperCase();
+  }
+
+  const dashboardData = await getDashboardData(req.user.id, options);
 
   res.status(200).json({
     success: true,
@@ -31,8 +36,13 @@ const getDashboardHandler = asyncHandler(async (req, res) => {
  * @access Private
  */
 const getPortfolioSummaryHandler = asyncHandler(async (req, res) => {
-  // Get portfolio summary
-  const portfolioSummary = await getPortfolioSummary(req.user.id);
+  const { baseCurrency } = req.query;
+  const options = {};
+  if (baseCurrency && /^[A-Za-z]{3}$/.test(baseCurrency)) {
+    options.baseCurrency = baseCurrency.toUpperCase();
+  }
+
+  const portfolioSummary = await getPortfolioSummary(req.user.id, options);
 
   res.status(200).json({
     success: true,

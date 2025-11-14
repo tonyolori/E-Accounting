@@ -26,6 +26,14 @@ const createInvestmentSchema = Joi.object({
       'any.required': 'Investment category is required'
     }),
 
+  currency: Joi.string()
+    .uppercase()
+    .length(3)
+    .optional()
+    .messages({
+      'string.length': 'Currency must be a 3-letter ISO code'
+    }),
+
   initialAmount: Joi.number()
     .positive()
     .precision(2)
@@ -121,6 +129,14 @@ const updateInvestmentSchema = Joi.object({
     .messages({
       'string.min': 'Category must be at least 2 characters long',
       'string.max': 'Category must be less than 100 characters'
+    }),
+
+  currency: Joi.string()
+    .uppercase()
+    .length(3)
+    .optional()
+    .messages({
+      'string.length': 'Currency must be a 3-letter ISO code'
     }),
 
   initialAmount: Joi.number()
@@ -235,6 +251,14 @@ const queryFiltersSchema = Joi.object({
     .optional()
     .messages({
       'any.only': 'Return type filter must be either FIXED or VARIABLE'
+    }),
+
+  currency: Joi.string()
+    .uppercase()
+    .length(3)
+    .optional()
+    .messages({
+      'string.length': 'Currency filter must be a 3-letter ISO code'
     }),
 
   category: Joi.string()

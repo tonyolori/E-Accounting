@@ -25,6 +25,7 @@ model Investment {
   userId          String
   name            String
   category        String
+  currency        String           @db.VarChar(3) @default("NGN")
   initialAmount Decimal          @db.Decimal(15, 2)
   currentBalance  Decimal          @db.Decimal(15, 2)
   returnType      ReturnType

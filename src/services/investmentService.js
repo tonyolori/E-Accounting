@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { isValidUUID } = require('../utils/validation');
+const { DEFAULT_BASE, convertAmount, normalizeCurrency, getRatesAt } = require('../utils/currency');
 
 /**
  * Create a new investment
@@ -14,6 +15,7 @@ async function createInvestment(userId, investmentData) {
     const {
       name,
       category,
+      currency,
       initialAmount,
       returnType,
       interestRate,
@@ -28,6 +30,7 @@ async function createInvestment(userId, investmentData) {
         userId,
         name: name.trim(),
         category: category.trim(),
+        currency: (currency || 'NGN').toUpperCase(),
         initialAmount: initialAmount,
         currentBalance: initialAmount, // Set initial balance to principal
         returnType,
@@ -41,6 +44,7 @@ async function createInvestment(userId, investmentData) {
         id: true,
         name: true,
         category: true,
+        currency: true,
         initialAmount: true,
         currentBalance: true,
         returnType: true,
@@ -87,6 +91,7 @@ async function getUserInvestments(userId, filters = {}) {
       status,
       returnType,
       category,
+      currency,
       startDate,
       endDate,
       limit = 20,
@@ -106,6 +111,10 @@ async function getUserInvestments(userId, filters = {}) {
 
     if (returnType) {
       where.returnType = returnType;
+    }
+
+    if (currency) {
+      where.currency = currency;
     }
 
     if (category) {
@@ -141,6 +150,7 @@ async function getUserInvestments(userId, filters = {}) {
           id: true,
           name: true,
           category: true,
+          currency: true,
           initialAmount: true,
           currentBalance: true,
           returnType: true,
@@ -207,6 +217,7 @@ async function getInvestmentById(investmentId, userId) {
         id: true,
         name: true,
         category: true,
+        currency: true,
         initialAmount: true,
         currentBalance: true,
         returnType: true,
@@ -285,6 +296,9 @@ async function updateInvestment(investmentId, userId, updateData) {
 
     // Prepare update data
     const updateFields = { ...updateData };
+    if (updateFields.currency) {
+      updateFields.currency = updateFields.currency.toUpperCase();
+    }
     
     // Handle date conversions
     if (updateFields.endDate) {
@@ -323,6 +337,7 @@ async function updateInvestment(investmentId, userId, updateData) {
         id: true,
         name: true,
         category: true,
+        currency: true,
         initialAmount: true,
         currentBalance: true,
         returnType: true,
@@ -416,6 +431,7 @@ async function updateInvestmentStatus(investmentId, userId, statusData) {
         id: true,
         name: true,
         category: true,
+        currency: true,
         initialAmount: true,
         currentBalance: true,
         returnType: true,
@@ -535,7 +551,7 @@ async function updateInvestmentBalance(investmentId, userId, balanceData) {
  * @returns {Object} Investment summary
  * @throws {AppError} If calculation fails
  */
-async function getInvestmentSummary(userId) {
+async function getInvestmentSummary(userId, options = {}) {
   try {
     const summary = await prisma.investment.aggregate({
       where: { userId },
@@ -565,12 +581,33 @@ async function getInvestmentSummary(userId) {
       cancelled: 0
     });
 
+    // Base-currency totals
+    const baseCurrency = normalizeCurrency(options.baseCurrency || DEFAULT_BASE);
+    const ratesAt = getRatesAt();
+    const investments = await prisma.investment.findMany({
+      where: { userId },
+      select: { initialAmount: true, currentBalance: true, currency: true }
+    });
+    let totalPrincipalBase = 0;
+    let totalCurrentValueBase = 0;
+    for (const inv of investments) {
+      const p = convertAmount(parseFloat(inv.initialAmount), inv.currency, baseCurrency);
+      const c = convertAmount(parseFloat(inv.currentBalance), inv.currency, baseCurrency);
+      totalPrincipalBase += p || 0;
+      totalCurrentValueBase += c || 0;
+    }
+
     return {
       totalInvestments: summary._count._all || 0,
       totalPrincipal: summary._sum.initialAmount || 0,
       totalCurrentValue: summary._sum.currentBalance || 0,
       totalReturns: (summary._sum.currentBalance || 0) - (summary._sum.initialAmount || 0),
-      statusBreakdown: statusSummary
+      statusBreakdown: statusSummary,
+      baseCurrency,
+      ratesAt,
+      totalPrincipalBase,
+      totalCurrentValueBase,
+      totalReturnsBase: totalCurrentValueBase - totalPrincipalBase
     };
   } catch (error) {
     console.error('Get investment summary error:', error);

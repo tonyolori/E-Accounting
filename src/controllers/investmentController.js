@@ -201,8 +201,13 @@ const updateInvestmentBalanceHandler = asyncHandler(async (req, res) => {
  * @access Private
  */
 const getInvestmentSummaryHandler = asyncHandler(async (req, res) => {
-  // Get summary
-  const summary = await getInvestmentSummary(req.user.id);
+  const { baseCurrency } = req.query;
+  let options = {};
+  if (baseCurrency && /^[A-Za-z]{3}$/.test(baseCurrency)) {
+    options.baseCurrency = baseCurrency.toUpperCase();
+  }
+
+  const summary = await getInvestmentSummary(req.user.id, options);
 
   res.status(200).json({
     success: true,
