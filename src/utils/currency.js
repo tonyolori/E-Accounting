@@ -1,4 +1,4 @@
-const DEFAULT_BASE = process.env.BASE_CURRENCY || 'USD';
+const DEFAULT_BASE = process.env.BASE_CURRENCY || 'NGN';
 
 function isISOCurrency(code) {
   return typeof code === 'string' && /^[A-Z]{3}$/.test(code);

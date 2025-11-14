@@ -11,16 +11,9 @@ const { DEFAULT_BASE, normalizeCurrency, convertAmount, getRatesAt } = require('
  */
 async function getDashboardData(userId, options = {}) {
   try {
-    // Get user investments summary
-    const investmentSummary = await prisma.investment.aggregate({
-      where: { userId },
-      _sum: {
-        initialAmount: true,
-        currentBalance: true
-      },
-      _count: {
-        _all: true
-      }
+    // Get total investments count
+    const totalInvestments = await prisma.investment.count({
+      where: { userId }
     });
 
     // Get investment status breakdown
@@ -119,18 +112,12 @@ async function getDashboardData(userId, options = {}) {
       .sort((a, b) => b.returnPercentage - a.returnPercentage)
       .slice(0, 5);
 
-    // Calculate total returns (native)
-    const totalPrincipal = investmentSummary._sum.initialAmount || 0;
-    const totalCurrentValue = investmentSummary._sum.currentBalance || 0;
-    const totalReturns = totalCurrentValue - totalPrincipal;
-    const portfolioReturnPercentage = totalPrincipal > 0 ? (totalReturns / totalPrincipal) * 100 : 0;
-
     // Base-currency totals
     const baseCurrency = normalizeCurrency(options.baseCurrency || DEFAULT_BASE);
     const ratesAt = getRatesAt();
     const investmentsForBase = await prisma.investment.findMany({
       where: { userId },
-      select: { initialAmount: true, currentBalance: true, currency: true }
+      select: { initialAmount: true, currentBalance: true, currency: true, category: true }
     });
     let totalPrincipalBase = 0;
     let totalCurrentValueBase = 0;
@@ -141,6 +128,62 @@ async function getDashboardData(userId, options = {}) {
       totalCurrentValueBase += c || 0;
     }
     const totalReturnsBase = totalCurrentValueBase - totalPrincipalBase;
+
+    // Asset allocation by category (percentages, using base-currency values)
+    const categorySumsBase = new Map();
+    for (const inv of investmentsForBase) {
+      const cat = inv.category || 'UNCATEGORIZED';
+      const valBase = convertAmount(parseFloat(inv.currentBalance), inv.currency, baseCurrency) || 0;
+      categorySumsBase.set(cat, (categorySumsBase.get(cat) || 0) + valBase);
+    }
+    const totalAllocationBase = Array.from(categorySumsBase.values()).reduce((sum, v) => sum + v, 0);
+    const assetAllocation = {};
+    if (totalAllocationBase > 0) {
+      // Build entries with exact percentages and fractional parts
+      const entries = Array.from(categorySumsBase.entries()).map(([cat, val]) => {
+        const exact = (val / totalAllocationBase) * 100;
+        const base = Math.floor(exact);
+        const frac = exact - base;
+        return { cat, base, frac };
+      });
+
+      // Distribute remainder to ensure sum exactly 100
+      let sumBase = entries.reduce((s, e) => s + e.base, 0);
+      let remainder = 100 - sumBase;
+      if (remainder > 0) {
+        // Add 1 to categories with largest fractional parts
+        entries.sort((a, b) => b.frac - a.frac);
+        for (let i = 0; i < remainder && i < entries.length; i++) entries[i].base += 1;
+      } else if (remainder < 0) {
+        // Remove 1 from categories with smallest fractional parts (handle float errors)
+        entries.sort((a, b) => a.frac - b.frac);
+        for (let i = 0; i < -remainder && i < entries.length; i++) {
+          if (entries[i].base > 0) entries[i].base -= 1;
+        }
+      }
+
+      // Construct final integer percentage allocation
+      for (const e of entries) assetAllocation[e.cat] = e.base;
+    }
+
+    // Per-currency totals
+    const currencyBreakdownRaw = await prisma.investment.groupBy({
+      by: ['currency'],
+      where: { userId },
+      _sum: {
+        initialAmount: true,
+        currentBalance: true
+      },
+      _count: { _all: true }
+    });
+
+    const totalsByCurrency = currencyBreakdownRaw.map(row => ({
+      currency: row.currency,
+      totalPrincipal: row._sum.initialAmount || 0,
+      totalCurrentValue: row._sum.currentBalance || 0,
+      totalReturns: (row._sum.currentBalance || 0) - (row._sum.initialAmount || 0),
+      count: row._count._all || 0
+    }));
 
     // Format status breakdown
     const formattedStatusBreakdown = statusBreakdown.reduce((acc, item) => {
@@ -159,18 +202,15 @@ async function getDashboardData(userId, options = {}) {
 
     return {
       portfolio: {
-        totalInvestments: investmentSummary._count._all || 0,
-        totalPrincipal,
-        totalCurrentValue,
-        totalReturns,
-        returnPercentage: portfolioReturnPercentage,
-        baseCurrency,
+        totalInvestments: totalInvestments || 0,
         ratesAt,
         totalPrincipalBase,
         totalCurrentValueBase,
         totalReturnsBase
       },
       statusBreakdown: formattedStatusBreakdown,
+      assetAllocation,
+      totalsByCurrency,
       recentActivity: {
         transactions: recentTransactions,
         last30Days: {
@@ -184,7 +224,7 @@ async function getDashboardData(userId, options = {}) {
   } catch (error) {
     console.error('Get dashboard data error:', error);
     throw new AppError(
-      'Failed to generate dashboard data',
+      error.message,
       500,
       'DASHBOARD_DATA_ERROR'
     );
@@ -325,7 +365,6 @@ async function getPortfolioSummary(userId, options = {}) {
         totalReturns: portfolioMetrics.totalReturns,
         returnPercentage: portfolioMetrics.returnPercentage,
         averageReturn: portfolioMetrics.averageReturn,
-        baseCurrency,
         ratesAt,
         totalPrincipalBase,
         totalCurrentValueBase,
@@ -619,9 +658,11 @@ async function generateFinancialReport(userId, options = {}) {
         includeTransactions
       },
       executiveSummary: {
-        totalPortfolioValue: dashboardData.portfolio.totalCurrentValue,
-        totalReturns: dashboardData.portfolio.totalReturns,
-        returnPercentage: dashboardData.portfolio.returnPercentage,
+        totalPortfolioValue: dashboardData.portfolio.totalCurrentValueBase,
+        totalReturns: dashboardData.portfolio.totalReturnsBase,
+        returnPercentage: dashboardData.portfolio.totalPrincipalBase > 0
+          ? (dashboardData.portfolio.totalReturnsBase / dashboardData.portfolio.totalPrincipalBase) * 100
+          : 0,
         activeInvestments: dashboardData.statusBreakdown.active.count,
         totalInvestments: dashboardData.portfolio.totalInvestments
       },
