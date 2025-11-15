@@ -51,6 +51,132 @@ prisma/                 # Database schema
 - `POST /api/returns/manual` - Add manual return
 - `GET /api/reports/dashboard` - Get dashboard data
 
+## Multi-Currency
+
+- Investments have a `currency` (ISO 4217, e.g. `NGN`, `USD`).
+- Aggregated reports convert values to a base currency for totals.
+- Configure via environment:
+
+```
+BASE_CURRENCY=NGN
+FX_RATES_JSON={"USD":1,"NGN":1500}
+```
+
+Notes:
+- Rates are interpreted as “units per 1 USD” (e.g., NGN 1500 per USD).
+- A timestamp for rates is returned as `ratesAt` in reporting responses.
+
+## Transactions API: Response Shapes
+
+All transaction responses include the related investment and its `currency`.
+
+- Create (POST /api/transactions) and Update (PUT /api/transactions/:id):
+
+```json
+{
+  "success": true,
+  "data": {
+    "transaction": {
+      "id": "...",
+      "type": "RETURN",
+      "amount": 500,
+      "balance": 152500,
+      "percentage": null,
+      "transactionDate": "2025-11-15T12:00:00.000Z",
+      "description": "...",
+      "createdAt": "2025-11-15T12:00:01.000Z",
+      "investment": {
+        "id": "...",
+        "name": "...",
+        "category": "STOCKS",
+        "currency": "NGN"
+      }
+    }
+  }
+}
+```
+
+- List (GET /api/transactions):
+
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [
+      {
+        "id": "...",
+        "type": "RETURN",
+        "amount": 500,
+        "balance": 152500,
+        "percentage": null,
+        "transactionDate": "2025-11-15T12:00:00.000Z",
+        "description": "...",
+        "createdAt": "2025-11-15T12:00:01.000Z",
+        "investment": { "id": "...", "name": "...", "category": "STOCKS", "currency": "NGN" }
+      }
+    ],
+    "pagination": { "total": 37, "limit": 20, "offset": 0, "hasNext": true, "hasPrev": false }
+  }
+}
+```
+
+- Get by ID (GET /api/transactions/:id) also includes current fields:
+
+```json
+{
+  "success": true,
+  "data": {
+    "transaction": {
+      "id": "...",
+      "type": "RETURN",
+      "amount": 500,
+      "balance": 152500,
+      "transactionDate": "2025-11-15T12:00:00.000Z",
+      "createdAt": "2025-11-15T12:00:01.000Z",
+      "investment": {
+        "id": "...",
+        "name": "...",
+        "category": "STOCKS",
+        "currency": "NGN",
+        "currentBalance": 152500,
+        "status": "ACTIVE"
+      }
+    }
+  }
+}
+```
+
+## Dashboard Reporting Changes
+
+Removed native-currency fields from the dashboard response:
+- Removed: `totalPrincipal`, `totalCurrentValue`, `totalReturns`, `returnPercentage`.
+
+Added base-currency portfolio totals and breakdowns:
+- `portfolio.totalPrincipalBase`
+- `portfolio.totalCurrentValueBase`
+- `portfolio.totalReturnsBase`
+- `portfolio.ratesAt`
+- `totalsByCurrency`: array of per-currency sums
+- `assetAllocation`: object of category percentages that sum to 100
+
+Example (partial):
+
+```json
+{
+  "portfolio": {
+    "ratesAt": "2025-11-15T12:00:00.000Z",
+    "totalPrincipalBase": 175000,
+    "totalCurrentValueBase": 198750,
+    "totalReturnsBase": 23750
+  },
+  "totalsByCurrency": [
+    { "currency": "NGN", "totalPrincipal": 150000, "totalCurrentValue": 172000, "totalReturns": 22000, "count": 5 },
+    { "currency": "USD", "totalPrincipal": 100, "totalCurrentValue": 115, "totalReturns": 15, "count": 2 }
+  ],
+  "assetAllocation": { "STOCKS": 60, "BONDS": 30, "CASH": 10 }
+}
+```
+
 ## Development
 
 - `npm run dev` - Start development server with nodemon

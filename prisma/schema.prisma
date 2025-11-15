@@ -47,6 +47,7 @@ model Transaction {
   investmentId    String
   type            TransactionType
   amount          Decimal         @db.Decimal(15, 2)
+  balance         Decimal?        @db.Decimal(15, 2)
   percentage      Decimal?        @db.Decimal(5, 4)
   transactionDate DateTime
   description     String?

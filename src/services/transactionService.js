@@ -53,7 +53,11 @@ async function createTransaction(userId, transactionData) {
       }
 
       // Validate transaction amount based on type
-      if ((type === 'WITHDRAWAL') && Math.abs(amount) > investment.currentBalance) {
+      const currentBalanceNum =
+        investment && investment.currentBalance && typeof investment.currentBalance.toNumber === 'function'
+          ? investment.currentBalance.toNumber()
+          : Number(investment.currentBalance);
+      if ((type === 'WITHDRAWAL') && Math.abs(Number(amount)) > currentBalanceNum) {
         throw new AppError(
           'Withdrawal amount cannot exceed current balance',
           400,
@@ -61,50 +65,24 @@ async function createTransaction(userId, transactionData) {
         );
       }
 
-      // Create transaction
-      const transaction = await tx.transaction.create({
-        data: {
-          investmentId,
-          type,
-          amount,
-          percentage,
-          transactionDate: new Date(transactionDate),
-          description: description?.trim() || null
-        },
-        select: {
-          id: true,
-          type: true,
-          amount: true,
-          percentage: true,
-          transactionDate: true,
-          description: true,
-          createdAt: true,
-          investment: {
-            select: {
-              id: true,
-              name: true,
-              category: true
-            }
-          }
-        }
-      });
-
+      
       // Update investment balance based on transaction type
       let balanceChange = 0;
       switch (type) {
         case 'RETURN':
         case 'DIVIDEND':
         case 'DEPOSIT':
-          balanceChange = amount;
+          balanceChange = Number(amount);
           break;
         case 'WITHDRAWAL':
-          balanceChange = -Math.abs(amount);
+          balanceChange = -Math.abs(Number(amount));
           break;
       }
-
-      if (balanceChange !== 0) {
-        const newBalance = investment.currentBalance + balanceChange;
+      let newBalance = currentBalanceNum;
         
+      if (balanceChange !== 0) {
+        newBalance = currentBalanceNum + Number(balanceChange);
+
         if (newBalance < 0) {
           throw new AppError(
             'Transaction would result in negative balance',
@@ -118,6 +96,36 @@ async function createTransaction(userId, transactionData) {
           data: { currentBalance: newBalance }
         });
       }
+      // Create transaction
+      let transaction = await tx.transaction.create({
+        data: {
+          investmentId,
+          type,
+          amount,
+          percentage,
+          balance: newBalance,
+          transactionDate: new Date(transactionDate),
+          description: description?.trim() || null
+        },
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          balance: true,
+          percentage: true,
+          transactionDate: true,
+          description: true,
+          createdAt: true,
+          investment: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              currency: true
+            }
+          }
+        }
+      });
 
       return transaction;
     });
@@ -198,6 +206,8 @@ async function getUserTransactions(userId, filters = {}) {
     const orderBy = {
       [sortBy]: sortOrder
     };
+    //theres a bug with this, the sort order the most recent for the 
+    //day is not at the top when the sort order is desc
 
     // Execute queries
     const [transactions, total] = await Promise.all([
@@ -210,6 +220,7 @@ async function getUserTransactions(userId, filters = {}) {
           id: true,
           type: true,
           amount: true,
+          balance: true,
           percentage: true,
           transactionDate: true,
           description: true,
@@ -218,7 +229,8 @@ async function getUserTransactions(userId, filters = {}) {
             select: {
               id: true,
               name: true,
-              category: true
+              category: true,
+              currency: true
             }
           }
         }
@@ -274,6 +286,7 @@ async function getTransactionById(transactionId, userId) {
         id: true,
         type: true,
         amount: true,
+        balance: true,
         percentage: true,
         transactionDate: true,
         description: true,
@@ -283,6 +296,7 @@ async function getTransactionById(transactionId, userId) {
             id: true,
             name: true,
             category: true,
+            currency: true,
             currentBalance: true,
             status: true
           }
@@ -372,13 +386,22 @@ async function updateTransaction(transactionId, userId, updateData) {
 
       // Calculate balance impact if amount is being changed
       let balanceAdjustment = 0;
+      let prospectiveNewBalance = null;
       if (updateData.amount !== undefined && updateData.amount !== existingTransaction.amount) {
         const oldImpact = getBalanceImpact(existingTransaction.type, existingTransaction.amount);
         const newImpact = getBalanceImpact(existingTransaction.type, updateData.amount);
         balanceAdjustment = newImpact - oldImpact;
 
         // Check if the new balance would be valid
-        const newBalance = existingTransaction.investment.currentBalance + balanceAdjustment;
+        const newBalance = (
+          existingTransaction &&
+          existingTransaction.investment &&
+          existingTransaction.investment.currentBalance &&
+          typeof existingTransaction.investment.currentBalance.toNumber === 'function'
+            ? existingTransaction.investment.currentBalance.toNumber()
+            : Number(existingTransaction.investment.currentBalance)
+        ) + Number(balanceAdjustment);
+        prospectiveNewBalance = newBalance;
         if (newBalance < 0) {
           throw new AppError(
             'Updated transaction would result in negative investment balance',
@@ -401,7 +424,24 @@ async function updateTransaction(transactionId, userId, updateData) {
         updateFields.description = updateFields.description.trim() || null;
       }
 
+      //come here 
       // Update transaction
+      // Include new post-transaction balance when amount changed
+      if (balanceAdjustment !== 0 && prospectiveNewBalance !== null) {
+        updateFields.balance = prospectiveNewBalance;
+      } else {
+        // No balance change; ensure balance column reflects current investment balance
+        const currentBalNum = (
+          existingTransaction &&
+          existingTransaction.investment &&
+          existingTransaction.investment.currentBalance &&
+          typeof existingTransaction.investment.currentBalance.toNumber === 'function'
+            ? existingTransaction.investment.currentBalance.toNumber()
+            : Number(existingTransaction.investment.currentBalance)
+        );
+        updateFields.balance = currentBalNum;
+      }
+//end here
       const updatedTransaction = await tx.transaction.update({
         where: { id: transactionId },
         data: updateFields,
@@ -409,6 +449,7 @@ async function updateTransaction(transactionId, userId, updateData) {
           id: true,
           type: true,
           amount: true,
+          balance: true,
           percentage: true,
           transactionDate: true,
           description: true,
@@ -417,7 +458,8 @@ async function updateTransaction(transactionId, userId, updateData) {
             select: {
               id: true,
               name: true,
-              category: true
+              category: true,
+              currency: true
             }
           }
         }
@@ -491,6 +533,7 @@ async function deleteTransaction(transactionId, userId) {
           id: true,
           type: true,
           amount: true,
+          balance: true,
           investmentId: true,
           investment: {
             select: {
@@ -522,7 +565,14 @@ async function deleteTransaction(transactionId, userId) {
       const balanceAdjustment = -getBalanceImpact(transaction.type, transaction.amount);
 
       // Check if removing this transaction would result in negative balance
-      const newBalance = transaction.investment.currentBalance + balanceAdjustment;
+      const newBalance = (
+        transaction &&
+        transaction.investment &&
+        transaction.investment.currentBalance &&
+        typeof transaction.investment.currentBalance.toNumber === 'function'
+          ? transaction.investment.currentBalance.toNumber()
+          : Number(transaction.investment.currentBalance)
+      ) + Number(balanceAdjustment);
       if (newBalance < 0) {
         throw new AppError(
           'Deleting this transaction would result in negative investment balance',
@@ -550,7 +600,8 @@ async function deleteTransaction(transactionId, userId) {
         deletedTransaction: {
           id: transaction.id,
           type: transaction.type,
-          amount: transaction.amount
+          amount: transaction.amount,
+          balance: transaction.balance
         },
         investmentName: transaction.investment.name,
         balanceAdjustment,
