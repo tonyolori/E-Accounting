@@ -8,6 +8,7 @@ const {
 
 const { asyncHandler } = require('../middleware/errorHandler');
 const Joi = require('joi');
+const { convertAmount, getRatesAt, normalizeCurrency } = require('../utils/currency');
 
 /**
  * Get dashboard data for user
@@ -161,53 +162,62 @@ const generateFinancialReportHandler = asyncHandler(async (req, res) => {
  * @access Private
  */
 const getQuickStatsHandler = asyncHandler(async (req, res) => {
-  // Get basic portfolio metrics quickly
-  const [investmentSummary, transactionSummary] = await Promise.all([
-    require('../config/database').prisma.investment.aggregate({
-      where: { userId: req.user.id },
-      _sum: {
-        initialAmount: true,
-        currentBalance: true
-      },
-      _count: {
-        _all: true
-      }
-    }),
-    require('../config/database').prisma.transaction.aggregate({
-      where: {
-        investment: {
-          userId: req.user.id
-        },
-        transactionDate: {
-          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) // This month
-        }
-      },
-      _sum: {
-        amount: true
-      },
-      _count: {
-        _all: true
-      }
-    })
-  ]);
+  // Always convert to NGN for quick stats
+  const baseCurrency = 'NGN';
+  const ratesAt = getRatesAt();
 
-  const totalPrincipal = investmentSummary._sum.initialAmount || 0;
-  const totalCurrentValue = investmentSummary._sum.currentBalance || 0;
-  const totalReturns = totalCurrentValue - totalPrincipal;
-  const returnPercentage = totalPrincipal > 0 ? (totalReturns / totalPrincipal) * 100 : 0;
+  const prisma = require('../config/database').prisma;
+
+  // Get all investments for the user with currency for conversion
+  const investments = await prisma.investment.findMany({
+    where: { userId: req.user.id },
+    select: { initialAmount: true, currentBalance: true, currency: true }
+  });
+
+  let totalPrincipalBase = 0;
+  let totalCurrentValueBase = 0;
+  for (const inv of investments) {
+    const p = convertAmount(parseFloat(inv.initialAmount), inv.currency, baseCurrency) || 0;
+    const c = convertAmount(parseFloat(inv.currentBalance), inv.currency, baseCurrency) || 0;
+    totalPrincipalBase += p;
+    totalCurrentValueBase += c;
+  }
+  const totalReturnsBase = totalCurrentValueBase - totalPrincipalBase;
+  const returnPercentage = totalPrincipalBase > 0 ? (totalReturnsBase / totalPrincipalBase) * 100 : 0;
+
+  // This month's transactions, converted to NGN
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthTx = await prisma.transaction.findMany({
+    where: {
+      investment: { userId: req.user.id },
+      transactionDate: { gte: startOfMonth }
+    },
+    select: {
+      amount: true,
+      investment: { select: { currency: true } }
+    }
+  });
+  const transactionCount = monthTx.length;
+  let transactionAmountBase = 0;
+  for (const t of monthTx) {
+    const a = convertAmount(parseFloat(t.amount), t.investment.currency, baseCurrency) || 0;
+    transactionAmountBase += a;
+  }
 
   res.status(200).json({
     success: true,
     message: 'Quick stats retrieved successfully',
     data: {
-      totalInvestments: investmentSummary._count._all || 0,
-      totalPortfolioValue: totalCurrentValue,
-      totalReturns,
+      totalInvestments: investments.length,
+      totalPortfolioValue: totalCurrentValueBase,
+      totalReturns: totalReturnsBase,
       returnPercentage,
       thisMonth: {
-        transactionCount: transactionSummary._count._all || 0,
-        transactionAmount: transactionSummary._sum.amount || 0
-      }
+        transactionCount,
+        transactionAmount: transactionAmountBase
+      },
+      currency: baseCurrency,
+      ratesAt
     }
   });
 });
