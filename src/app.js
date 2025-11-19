@@ -37,12 +37,14 @@ const investmentRoutes = require('./routes/investments');
 const returnsRoutes = require('./routes/returns');
 const transactionRoutes = require('./routes/transactions');
 const reportRoutes = require('./routes/reports');
+const interestRoutes = require('./routes/interest');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
 app.use('/api/returns', returnsRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/interest', interestRoutes);
 
 // 404 handler for unmatched routes
 app.use(notFoundHandler);

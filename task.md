@@ -463,15 +463,409 @@ This document provides a granular, step-by-step implementation plan for building
 
 ---
 
-## SUCCESS CRITERIA
+## PHASE 9: AUTOMATIC INVESTMENT VALUE INCREASE
+
+### Task 9.1: Database Schema Extension for Interest Tracking
+**Concern:** Support automatic interest calculation and history tracking
+
+**Steps:**
+1. Add new fields to Investment model in `prisma/schema.prisma`:
+   ```prisma
+   model Investment {
+     // ... existing fields
+     compoundingFrequency  String?    // MONTHLY, QUARTERLY, ANNUALLY, DAILY
+     lastInterestCalculated DateTime?
+     nextInterestDue       DateTime?
+     autoCalculateInterest Boolean    @default(false)
+   }
+   ```
+2. Create new InterestCalculation model:
+   ```prisma
+   model InterestCalculation {
+     id              String    @id @default(uuid())
+     investmentId    String
+     investment      Investment @relation(fields: [investmentId], references: [id])
+     calculationType String    // AUTOMATIC, MANUAL
+     calculatedAt    DateTime  @default(now())
+     periodStart     DateTime
+     periodEnd       DateTime
+     principalAmount Decimal
+     interestRate    Decimal
+     interestEarned  Decimal
+     newBalance      Decimal
+     transactionId   String?   // Link to created transaction
+     isReverted      Boolean   @default(false)
+     revertedAt      DateTime?
+     revertedBy      String?
+     notes           String?
+     @@index([investmentId, calculatedAt])
+   }
+   ```
+3. Create migration: `npx prisma migrate dev --name add_interest_tracking`
+4. Update Prisma client: `npx prisma generate`
+
+**Test:** Schema migration successful, new fields and model created
+
+### Task 9.2: Interest Calculation Utilities
+**Concern:** Core mathematical functions for interest calculations
+
+**Steps:**
+1. Extend `src/utils/calculations.js` with new functions:
+   - `calculatePeriodInterest(principal, annualRate, compoundingFrequency, periodInDays)`:
+     - Calculate interest for a specific period
+     - Support different compounding frequencies
+     - Return: { interest, newBalance, effectiveRate }
+   - `calculateDaysSinceLastCalculation(lastCalculatedDate, currentDate)`:
+     - Calculate exact days between dates
+     - Handle timezone differences
+   - `determineNextDueDate(lastCalculated, frequency)`:
+     - Calculate next interest due date based on frequency
+     - Return DateTime
+   - `calculateProRataInterest(principal, annualRate, daysInPeriod, daysInYear)`:
+     - For partial periods
+     - Handle leap years
+2. Add comprehensive unit tests for all calculations:
+   - Test edge cases (leap years, partial periods, different frequencies)
+   - Verify mathematical accuracy to 2 decimal places
+   - Test boundary conditions (zero amounts, negative rates)
+
+**Test:** All calculation functions return correct values for various scenarios
+
+### Task 9.3: Fixed Interest Calculation Service
+**Concern:** Business logic for automatic fixed interest calculation
+
+**Steps:**
+1. Create `src/services/interestService.js`:
+   - `calculateInterestNow(investmentId, userId)` function:
+     ```javascript
+     async function calculateInterestNow(investmentId, userId) {
+       // 1. Fetch investment with ownership verification
+       // 2. Validate returnType is FIXED
+       // 3. Verify interestRate is set
+       // 4. Calculate days since last calculation or start date
+       // 5. Calculate interest using calculatePeriodInterest
+       // 6. Start database transaction
+       // 7. Create InterestCalculation record
+       // 8. Create Transaction record (type: RETURN)
+       // 9. Update investment currentBalance
+       // 10. Update lastInterestCalculated timestamp
+       // 11. Calculate and update nextInterestDue
+       // 12. Commit transaction
+       // 13. Return { calculation, transaction, updatedInvestment }
+     }
+     ```
+   - `getInterestCalculationHistory(investmentId, userId, options)`:
+     - Fetch all calculations for an investment
+     - Support pagination and filtering
+     - Include reverted status
+   - `validateFixedInvestmentForCalculation(investment)`:
+     - Check returnType is FIXED
+     - Verify interestRate exists
+     - Ensure status is ACTIVE
+     - Check not already calculated today
+2. Add error handling for:
+   - Investment not found
+   - Unauthorized access
+   - Invalid investment type
+   - Missing interest rate
+   - Calculation too soon after last one
+
+**Test:** Interest calculation creates correct records, updates balance accurately
+
+### Task 9.4: Revert Interest Calculation Service
+**Concern:** Ability to undo the most recent interest calculation
+
+**Steps:**
+1. Add `revertLastInterestCalculation(investmentId, userId)` to `interestService.js`:
+   ```javascript
+   async function revertLastInterestCalculation(investmentId, userId) {
+     // 1. Fetch investment with ownership verification
+     // 2. Find last non-reverted InterestCalculation
+     // 3. Verify calculation exists and is not already reverted
+     // 4. Start database transaction
+     // 5. Mark InterestCalculation as reverted
+     // 6. Record revertedAt timestamp and revertedBy userId
+     // 7. If transaction was created, delete or mark as cancelled
+     // 8. Subtract interest from investment currentBalance
+     // 9. Reset lastInterestCalculated to previous calculation date
+     // 10. Recalculate nextInterestDue
+     // 11. Commit transaction
+     // 12. Return { revertedCalculation, updatedInvestment }
+   }
+   ```
+2. Add validation checks:
+   - Only allow reverting the most recent calculation
+   - Prevent reverting already-reverted calculations
+   - Ensure no transactions occurred after the calculation
+3. Add logging for audit trail
+
+**Test:** Revert correctly undoes interest calculation, restores previous balance
+
+### Task 9.5: Variable Investment Update Service
+**Concern:** Manual updates for variable return investments
+
+**Steps:**
+1. Add variable investment functions to `interestService.js`:
+   - `updateReturnPercentage(investmentId, userId, newPercentage, effectiveDate)`:
+     ```javascript
+     async function updateReturnPercentage(investmentId, userId, newPercentage, effectiveDate) {
+       // 1. Fetch investment with ownership verification
+       // 2. Validate returnType is VARIABLE
+       // 3. Validate newPercentage is a valid number
+       // 4. Calculate amount based on percentage: (currentBalance * percentage / 100)
+       // 5. Start database transaction
+       // 6. Create Transaction record (type: RETURN, percentage: newPercentage)
+       // 7. Update investment currentBalance
+       // 8. Update investment returnRate/lastReturnPercentage field
+       // 9. Commit transaction
+       // 10. Return { transaction, updatedInvestment, calculatedAmount }
+     }
+     ```
+   - `updateBalanceCalculateReturn(investmentId, userId, newBalance, effectiveDate)`:
+     ```javascript
+     async function updateBalanceCalculateReturn(investmentId, userId, newBalance, effectiveDate) {
+       // 1. Fetch investment with ownership verification
+       // 2. Validate returnType is VARIABLE
+       // 3. Get current balance
+       // 4. Calculate return: (newBalance - currentBalance)
+       // 5. Calculate return percentage: (return / currentBalance * 100)
+       // 6. Start database transaction
+       // 7. Create Transaction record (type: RETURN, percentage: calculated)
+       // 8. Update investment currentBalance to newBalance
+       // 9. Update investment returnRate/lastReturnPercentage
+       // 10. Commit transaction
+       // 11. Return { transaction, updatedInvestment, calculatedPercentage, returnAmount }
+     }
+     ```
+2. Add validation for:
+   - Valid percentage range (-100% to +1000%)
+   - New balance is not negative
+   - Effective date is not in future
+   - Investment is ACTIVE status
+
+**Test:** Both update methods work correctly, calculate returns accurately
+
+### Task 9.6: Scheduled Interest Calculation (Automated)
+**Concern:** Automatic interest calculation based on schedule
+
+**Steps:**
+1. Create `src/services/scheduledInterestService.js`:
+   - `processScheduledInterestCalculations()` function:
+     ```javascript
+     async function processScheduledInterestCalculations() {
+       // 1. Find all investments where:
+       //    - returnType = FIXED
+       //    - autoCalculateInterest = true
+       //    - status = ACTIVE
+       //    - nextInterestDue <= now
+       // 2. For each investment:
+       //    - Calculate interest using calculateInterestNow
+       //    - Handle errors individually (don't stop batch)
+       //    - Log success/failure
+       // 3. Return summary: { processed, succeeded, failed, errors }
+     }
+     ```
+   - `previewScheduledCalculations()`:
+     - Show which investments will be processed
+     - Display calculated amounts without executing
+2. Add cron job or scheduler integration (using node-cron):
+   - Create `src/jobs/interestCalculationJob.js`
+   - Schedule to run daily at midnight
+   - Call `processScheduledInterestCalculations()`
+   - Log results to file or database
+3. Add configuration for:
+   - Enable/disable auto-calculation globally
+   - Set calculation time
+   - Notification settings
+
+**Test:** Scheduled job runs successfully, processes due calculations
+
+### Task 9.7: Interest Calculation Validation & Validators
+**Concern:** Input validation for all interest operations
+
+**Steps:**
+1. Create `src/validators/interestValidator.js`:
+   - `calculateInterestNowSchema`:
+     - investmentId (required, UUID)
+   - `revertCalculationSchema`:
+     - investmentId (required, UUID)
+     - confirmRevert (required, boolean)
+   - `updateReturnPercentageSchema`:
+     - investmentId (required, UUID)
+     - percentage (required, number, -100 to 1000)
+     - effectiveDate (optional, date, not future)
+     - description (optional, string)
+   - `updateBalanceSchema`:
+     - investmentId (required, UUID)
+     - newBalance (required, positive number)
+     - effectiveDate (optional, date, not future)
+     - description (optional, string)
+   - `scheduleSettingsSchema`:
+     - autoCalculate (boolean)
+     - compoundingFrequency (enum)
+2. Add custom validation rules:
+   - Validate investment exists and user owns it
+   - Validate investment type matches operation
+   - Prevent concurrent calculations
+
+**Test:** All validators reject invalid input, accept valid data
+
+### Task 9.8: Interest Calculation API Endpoints
+**Concern:** HTTP API for interest calculation features
+
+**Steps:**
+1. Create `src/controllers/interestController.js`:
+   - `calculateInterestNow(req, res)`:
+     - Validate input
+     - Call interestService.calculateInterestNow
+     - Return 200 with calculation details
+   - `revertLastCalculation(req, res)`:
+     - Validate input and confirmation
+     - Call interestService.revertLastInterestCalculation
+     - Return 200 with revert confirmation
+   - `getCalculationHistory(req, res)`:
+     - Get investment calculation history
+     - Support pagination
+     - Return 200 with history array
+   - `updateReturnPercentage(req, res)`:
+     - Validate variable investment
+     - Call interestService.updateReturnPercentage
+     - Return 200 with transaction details
+   - `updateBalanceCalculateReturn(req, res)`:
+     - Validate variable investment
+     - Call interestService.updateBalanceCalculateReturn
+     - Return 200 with calculated return
+   - `previewInterestCalculation(req, res)`:
+     - Calculate without saving
+     - Return preview data
+   - `updateInvestmentSchedule(req, res)`:
+     - Update auto-calculation settings
+     - Return 200 with updated settings
+2. Create `src/routes/interest.js`:
+   - POST /calculate/:investmentId (calculate interest now)
+   - POST /revert/:investmentId (revert last calculation)
+   - GET /history/:investmentId (get calculation history)
+   - POST /variable/update-percentage/:investmentId
+   - POST /variable/update-balance/:investmentId
+   - GET /preview/:investmentId
+   - PATCH /schedule/:investmentId (update schedule settings)
+3. Add auth middleware to all routes
+4. Add rate limiting for calculation endpoints
+
+**Test:** All endpoints work correctly, proper status codes, auth enforced
+
+### Task 9.9: Frontend Integration Support
+**Concern:** API responses formatted for frontend consumption
+
+**Steps:**
+1. Add response formatting helpers in `src/utils/responseFormatter.js`:
+   - `formatInterestCalculationResponse(calculation, transaction, investment)`:
+     - Include all relevant data
+     - Format dates consistently
+     - Include next due date
+     - Add calculation breakdown
+   - `formatCalculationHistory(calculations)`:
+     - Include revert status
+     - Show period information
+     - Format amounts
+2. Update all interest endpoints to use formatters
+3. Add comprehensive API documentation:
+   - Document all endpoints with examples
+   - Include request/response schemas
+   - Add calculation formulas used
+   - Provide integration examples
+
+**Test:** API responses match frontend expectations, documentation complete
+
+### Task 9.10: Testing & Validation
+**Concern:** Comprehensive testing of all interest features
+
+**Steps:**
+1. Create unit tests in `tests/unit/interestService.test.js`:
+   - Test all calculation functions
+   - Test edge cases (zero amounts, max values)
+   - Test date calculations
+   - Test revert logic
+   - Test variable update calculations
+2. Create integration tests in `tests/integration/interest.test.js`:
+   - Full fixed interest calculation flow
+   - Revert and recalculate flow
+   - Variable percentage update flow
+   - Variable balance update flow
+   - Scheduled calculation flow
+   - Error handling scenarios
+   - Concurrent request handling
+3. Create end-to-end test scenarios:
+   - Create fixed investment → auto-calculate → revert → recalculate
+   - Create variable investment → update percentage → update balance
+   - Test scheduled job execution
+4. Performance testing:
+   - Test batch calculations (100+ investments)
+   - Verify database transaction performance
+   - Check for race conditions
+
+**Test:** All tests pass (>95% coverage), no regressions
+
+### Task 9.11: Admin & Monitoring Features
+**Concern:** Administration and monitoring of interest calculations
+
+**Steps:**
+1. Create admin endpoints in `src/controllers/adminController.js`:
+   - GET /admin/interest/pending (show pending calculations)
+   - POST /admin/interest/process-all (trigger batch processing)
+   - GET /admin/interest/stats (calculation statistics)
+   - POST /admin/interest/recalculate/:investmentId (force recalculation)
+2. Add monitoring and logging:
+   - Log all calculations to dedicated log file
+   - Track success/failure rates
+   - Monitor calculation performance
+   - Alert on calculation failures
+3. Create dashboard queries for:
+   - Total interest earned this month
+   - Number of auto-calculations performed
+   - Failed calculation attempts
+   - Reverted calculations count
+
+**Test:** Admin features work, monitoring captures all events
+
+### Task 9.12: Documentation & User Guide
+**Concern:** Complete documentation for interest features
+
+**Steps:**
+1. Create `docs/INTEREST_CALCULATION.md`:
+   - Explain fixed vs variable interest
+   - Document calculation formulas
+   - Provide usage examples
+   - Include API endpoint reference
+   - Add troubleshooting guide
+2. Update API documentation:
+   - Add interest calculation section
+   - Include request/response examples
+   - Document error codes
+   - Add best practices
+3. Create user guide sections:
+   - How to set up automatic interest
+   - How to manually calculate interest
+   - How to revert calculations
+   - How to update variable returns
+   - Understanding calculation history
+
+**Test:** Documentation is comprehensive and accurate
+
+---
+
+## UPDATED SUCCESS CRITERIA
 
 **Project Complete When:**
-✅ All 23 tasks completed successfully  
+✅ All 35 tasks completed successfully (23 original + 12 new)  
 ✅ All tests pass (unit + integration)  
-✅ API documentation generated  
-✅ Full user journey functional  
+✅ API documentation generated and updated  
+✅ Full user journey functional including interest automation  
 ✅ Error handling robust  
-✅ Database schema deployed  
+✅ Database schema deployed with interest tracking  
 ✅ Authentication secured  
+✅ Interest calculation system fully operational  
+✅ Scheduled jobs running correctly  
+✅ Variable investment updates working  
 
-**Final Deliverable:** Production-ready Finance Tracking API with user authentication, investment management, manual returns processing, transaction tracking, and basic reporting capabilities.
+**Final Deliverable:** Production-ready Finance Tracking API with user authentication, investment management, **automatic interest calculation**, manual returns processing, transaction tracking, variable investment updates, calculation history tracking, and comprehensive reporting capabilities.

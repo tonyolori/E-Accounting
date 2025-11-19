@@ -316,6 +316,78 @@ function calculateYearsBetween(startDate, endDate) {
   return parseFloat((days / 365.25).toFixed(4)); // Account for leap years
 }
 
+/**
+ * Calculate interest for a specific period with compounding
+ * @param {number} principal
+ * @param {number} annualRate - as decimal or percentage
+ * @param {('DAILY'|'MONTHLY'|'QUARTERLY'|'ANNUALLY'|number)} compoundingFrequency
+ * @param {number} periodInDays
+ * @returns {{interest:number, newBalance:number, effectiveRate:number}}
+ */
+function calculatePeriodInterest(principal, annualRate, compoundingFrequency, periodInDays) {
+  if (principal < 0 || annualRate < 0 || periodInDays < 0) {
+    throw new Error('Invalid input parameters for period interest calculation');
+  }
+  const rate = annualRate > 1 ? annualRate / 100 : annualRate;
+  const freqMap = { DAILY: 365, MONTHLY: 12, QUARTERLY: 4, ANNUALLY: 1 };
+  const n = typeof compoundingFrequency === 'number' ? compoundingFrequency : (freqMap[compoundingFrequency] || 12);
+  const tYears = periodInDays / 365.25;
+  const effectiveRate = Math.pow(1 + rate / n, n * tYears) - 1;
+  const interest = principal * effectiveRate;
+  const newBalance = principal + interest;
+  return {
+    interest: parseFloat(interest.toFixed(2)),
+    newBalance: parseFloat(newBalance.toFixed(2)),
+    effectiveRate: parseFloat((effectiveRate).toFixed(8))
+  };
+}
+
+/**
+ * Calculate pro-rata (simple) interest for partial periods
+ */
+function calculateProRataInterest(principal, annualRate, daysInPeriod, daysInYear = 365.25) {
+  if (principal < 0 || annualRate < 0 || daysInPeriod < 0) {
+    throw new Error('Invalid input parameters for pro-rata interest calculation');
+  }
+  const rate = annualRate > 1 ? annualRate / 100 : annualRate;
+  const interest = principal * rate * (daysInPeriod / daysInYear);
+  return parseFloat(interest.toFixed(2));
+}
+
+/**
+ * Calculate days since last calculation
+ */
+function calculateDaysSinceLastCalculation(lastCalculatedDate, currentDate = new Date()) {
+  const last = lastCalculatedDate ? new Date(lastCalculatedDate) : null;
+  const now = new Date(currentDate);
+  if (!last) return 0;
+  return calculateDaysBetween(last, now);
+}
+
+/**
+ * Determine next due date based on frequency
+ */
+function determineNextDueDate(lastCalculated, frequency) {
+  const base = lastCalculated ? new Date(lastCalculated) : new Date();
+  const d = new Date(base);
+  switch (frequency) {
+    case 'DAILY':
+      d.setDate(d.getDate() + 1);
+      break;
+    case 'QUARTERLY':
+      d.setMonth(d.getMonth() + 3);
+      break;
+    case 'ANNUALLY':
+      d.setFullYear(d.getFullYear() + 1);
+      break;
+    case 'MONTHLY':
+    default:
+      d.setMonth(d.getMonth() + 1);
+      break;
+  }
+  return d;
+}
+
 module.exports = {
   calculateCompoundInterest,
   calculateSimpleInterest,
@@ -325,5 +397,9 @@ module.exports = {
   calculateFutureValueWithContributions,
   calculatePortfolioMetrics,
   calculateDaysBetween,
-  calculateYearsBetween
+  calculateYearsBetween,
+  calculatePeriodInterest,
+  calculateProRataInterest,
+  calculateDaysSinceLastCalculation,
+  determineNextDueDate
 };

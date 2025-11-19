@@ -9,6 +9,110 @@ This is a comprehensive REST API for a finance tracking application that manages
 
 ---
 
+### Interest (/api/interest)
+
+All endpoints require authentication.
+
+#### POST /api/interest/calculate/:investmentId
+Calculate interest now for a FIXED investment.
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "calculation": {
+      "id": "calc_id",
+      "investmentId": "investment_id",
+      "interestEarned": 250.5,
+      "periodStart": "2025-10-15T00:00:00.000Z",
+      "periodEnd": "2025-11-15T00:00:00.000Z",
+      "newBalance": 10250.5
+    },
+    "transaction": {
+      "id": "txn_id",
+      "type": "RETURN",
+      "amount": 250.5,
+      "transactionDate": "2025-11-15T00:00:00.000Z"
+    },
+    "investment": {
+      "id": "investment_id",
+      "currentBalance": 10250.5,
+      "nextInterestDue": "2025-12-15T00:00:00.000Z"
+    }
+  }
+}
+```
+
+#### POST /api/interest/revert/:investmentId
+Revert the most recent interest calculation for a FIXED investment.
+
+Body:
+```json
+{ "confirmRevert": true }
+```
+
+Response:
+```json
+{ "success": true, "data": { "calculation": { "isReverted": true }, "investment": { "currentBalance": 10000 } } }
+```
+
+#### GET /api/interest/history/:investmentId
+Get calculation history.
+
+Query: `page`, `limit`
+
+Response:
+```json
+{ "success": true, "data": { "items": [ { "id": "calc_id" } ], "pagination": { "page": 1, "limit": 20, "total": 5, "totalPages": 1 } } }
+```
+
+#### GET /api/interest/preview/:investmentId
+Preview calculation (no write) for FIXED investment.
+
+Response:
+```json
+{ "success": true, "data": { "preview": true, "days": 30, "interest": 250.5, "newBalance": 10250.5 } }
+```
+
+#### PATCH /api/interest/schedule/:investmentId
+Update auto-calculation schedule for FIXED investment.
+
+Body:
+```json
+{ "autoCalculate": true, "compoundingFrequency": "MONTHLY" }
+```
+
+Response: updated Investment.
+
+#### POST /api/interest/variable/update-percentage/:investmentId
+For VARIABLE investment, update by percentage (system computes amount and updates balance).
+
+Body:
+```json
+{ "percentage": 2.5, "effectiveDate": "2025-11-01", "description": "Monthly variable return" }
+```
+
+Response:
+```json
+{ "success": true, "data": { "transaction": { "amount": 250, "percentage": 2.5 }, "investment": { "currentBalance": 10250 } } }
+```
+
+#### POST /api/interest/variable/update-balance/:investmentId
+For VARIABLE investment, provide new balance; system computes amount and implied percentage.
+
+Body:
+```json
+{ "newBalance": 105000, "effectiveDate": "2025-11-01", "description": "Mark to market" }
+```
+
+Response:
+```json
+{ "success": true, "data": { "transaction": { "amount": 5000, "percentage": 5.0 }, "investment": { "currentBalance": 105000 } } }
+```
+
+---
+
 ## Authentication
 
 All endpoints except `/health`, `/api/auth/register`, and `/api/auth/login` require authentication.
@@ -1246,6 +1350,8 @@ All endpoints return consistent error responses:
 - `DEPOSIT`
 - `WITHDRAWAL`
 - `TRANSFER`
+- `RETURN`
+- `DIVIDEND`
 
 ### Return Types
 - `INTEREST`

@@ -44,20 +44,20 @@ It provides tools to track investment performance, calculate returns (fixed and 
 
 ### 2.2 Return Calculation
 
-- **Automatic Fixed Monthly Returns**
-  - Automatically add monthly returns for fixed-rate investments
-  - Allow configuration for:
-    - Simple or compound interest
-    - Frequency (monthly, quarterly, yearly)
-  - Use background jobs or scheduled tasks to handle updates
-  - for the prototype, updates can be handled on each fetch
+- **Automatic Fixed Returns (Manual or Scheduled)**
+  - Calculate interest now for fixed-rate investments based on actual period days and compounding frequency
+  - Configuration:
+    - Compounding frequency: daily, monthly, quarterly, annually
+    - Automatic scheduling (cron) or manual trigger
+  - Interest calculation creates a RETURN transaction, updates the investment balance, and records an InterestCalculation history entry
+  - Revert last calculation restores prior balance, marks calculation as reverted, and removes the associated transaction
+  - Preview calculation endpoint allows seeing interest and new balance without persisting changes
 
 - **Manual Variable Returns**
-  - Allow manual input of returns for variable-rate investments
-  - Support:
-    - Percentage-based input
-    - Absolute value input
-  - Update balance accordingly
+  - Two supported flows:
+    - Update last return percentage (system computes amount and updates balance)
+    - Input new balance (system computes return amount and implied percentage)
+  - Both flows create a RETURN transaction with the computed values and update the investment balance
 
 - **Compound Interest Calculator**
   - Estimate future value of an investment by inputting:
@@ -71,7 +71,7 @@ It provides tools to track investment performance, calculate returns (fixed and 
 ### 2.3 Investment Balances
 
 - **Automatic Balance Updates**
-  - Auto-adjust balance based on computed or entered returns
+  - Auto-adjust balance based on computed or entered returns (fixed: calculated interest; variable: computed amount or implied percentage)
 
 - **Manual Balance Update**
   - Allow users to manually adjust balance to reflect:

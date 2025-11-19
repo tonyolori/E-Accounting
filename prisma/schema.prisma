@@ -38,6 +38,12 @@ model Investment {
   updatedAt       DateTime         @updatedAt
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions    Transaction[]
+  // Interest tracking
+  compoundingFrequency  String?
+  lastInterestCalculated DateTime?
+  nextInterestDue       DateTime?
+  autoCalculateInterest Boolean    @default(false)
+  interestCalculations  InterestCalculation[]
 
   @@map("investments")
 }
@@ -73,4 +79,26 @@ enum TransactionType {
   WITHDRAWAL
   DEPOSIT
   DIVIDEND
+}
+
+model InterestCalculation {
+  id              String      @id @default(uuid())
+  investmentId    String
+  investment      Investment  @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  calculationType String
+  calculatedAt    DateTime    @default(now())
+  periodStart     DateTime
+  periodEnd       DateTime
+  principalAmount Decimal     @db.Decimal(15, 2)
+  interestRate    Decimal     @db.Decimal(5, 4)
+  interestEarned  Decimal     @db.Decimal(15, 2)
+  newBalance      Decimal     @db.Decimal(15, 2)
+  transactionId   String?
+  isReverted      Boolean     @default(false)
+  revertedAt      DateTime?
+  revertedBy      String?
+  notes           String?
+
+  @@index([investmentId, calculatedAt])
+  @@map("interest_calculations")
 }
