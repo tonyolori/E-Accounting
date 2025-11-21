@@ -2,6 +2,7 @@ const { prisma } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { isValidUUID } = require('../utils/validation');
 const { DEFAULT_BASE, convertAmount, normalizeCurrency, getRatesAt } = require('../utils/currency');
+const { ReturnType } = require('@prisma/client');
 
 /**
  * Create a new investment
@@ -34,7 +35,7 @@ async function createInvestment(userId, investmentData) {
         initialAmount: initialAmount,
         currentBalance: initialAmount, // Set initial balance to principal
         returnType,
-        interestRate: returnType === 'FIXED' ? interestRate : null,
+        interestRate: returnType === ReturnType.FIXED ? interestRate : null,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         status: 'ACTIVE', // Default status
@@ -171,8 +172,16 @@ async function getUserInvestments(userId, filters = {}) {
       prisma.investment.count({ where })
     ]);
 
+    // Normalize Decimal fields to numbers where appropriate
+    const normalizedInvestments = investments.map((inv) => ({
+      ...inv,
+      interestRate: inv.interestRate == null ? null : Number(inv.interestRate),
+      initialAmount: inv.initialAmount == null ? null : Number(inv.initialAmount),
+      currentBalance: inv.currentBalance == null ? null : Number(inv.currentBalance)
+    }));
+
     return {
-      investments,
+      investments: normalizedInvestments,
       pagination: {
         total,
         limit,
@@ -305,14 +314,14 @@ async function updateInvestment(investmentId, userId, updateData) {
       updateFields.endDate = new Date(updateFields.endDate);
     }
 
-    // Handle interest rate logic
+    // Handle  interest rate logic
     if (updateFields.returnType === 'VARIABLE') {
       updateFields.interestRate = null;
     } else if (updateFields.returnType === 'FIXED' && !updateFields.interestRate) {
       // If changing to FIXED without providing rate, keep existing or require it
       if (existingInvestment.returnType !== 'FIXED') {
         throw new AppError(
-          'Interest rate is required when changing to FIXED return type',
+          ' Interest rate is required when changing to FIXED return type',
           400,
           'INTEREST_RATE_REQUIRED'
         );

@@ -61,9 +61,9 @@ const createInvestmentSchema = Joi.object({
       .precision(4)
       .required()
       .messages({
-        'number.min': 'Interest rate cannot be negative',
-        'number.max': 'Interest rate cannot exceed 100%',
-        'any.required': 'Interest rate is required for fixed return investments'
+        'number.min': ' Interest rate cannot be negative',
+        'number.max': ' Interest rate cannot exceed 100%',
+        'any.required': ' Interest rate is required for fixed return investments'
       }),
     otherwise: Joi.number()
       .min(0)
@@ -72,8 +72,8 @@ const createInvestmentSchema = Joi.object({
       .optional()
       .allow(null)
       .messages({
-        'number.min': 'Interest rate cannot be negative',
-        'number.max': 'Interest rate cannot exceed 100%'
+        'number.min': ' Interest rate cannot be negative',
+        'number.max': ' Interest rate cannot exceed 100%'
       })
   }),
 
@@ -163,8 +163,8 @@ const updateInvestmentSchema = Joi.object({
     .optional()
     .allow(null)
     .messages({
-      'number.min': 'Interest rate cannot be negative',
-      'number.max': 'Interest rate cannot exceed 100%'
+      'number.min': ' Interest rate cannot be negative',
+      'number.max': ' Interest rate cannot exceed 100%'
     }),
 
   endDate: Joi.date()

@@ -514,7 +514,7 @@ async function calculateNextMonthlyReturn(investmentId, userId) {
 
     if (!investment.interestRate) {
       throw new AppError(
-        'Investment has no interest rate defined',
+        'Investment has no  interest rate defined',
         400,
         'NO_INTEREST_RATE'
       );

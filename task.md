@@ -567,7 +567,7 @@ This document provides a granular, step-by-step implementation plan for building
    - Investment not found
    - Unauthorized access
    - Invalid investment type
-   - Missing interest rate
+   - Missing  interest rate
    - Calculation too soon after last one
 
 **Test:** Interest calculation creates correct records, updates balance accurately
@@ -616,7 +616,7 @@ This document provides a granular, step-by-step implementation plan for building
        // 5. Start database transaction
        // 6. Create Transaction record (type: RETURN, percentage: newPercentage)
        // 7. Update investment currentBalance
-       // 8. Update investment returnRate/lastReturnPercentage field
+       // 8. Update investment interestRate/lastReturnPercentage field
        // 9. Commit transaction
        // 10. Return { transaction, updatedInvestment, calculatedAmount }
      }
@@ -632,7 +632,7 @@ This document provides a granular, step-by-step implementation plan for building
        // 6. Start database transaction
        // 7. Create Transaction record (type: RETURN, percentage: calculated)
        // 8. Update investment currentBalance to newBalance
-       // 9. Update investment returnRate/lastReturnPercentage
+       // 9. Update investment interestRate/lastReturnPercentage
        // 10. Commit transaction
        // 11. Return { transaction, updatedInvestment, calculatedPercentage, returnAmount }
      }

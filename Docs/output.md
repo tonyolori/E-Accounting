@@ -462,11 +462,11 @@ Get returns summary across all investments for the user.
   "data": {
     "totalReturns": 2500,
     "totalInvested": 50000,
-    "averageReturnRate": 5.0,
+    "averageinterestRate": 5.0,
     "bestPerformingInvestment": {
       "id": "investment_id",
       "name": "Investment Name",
-      "returnRate": 12.5
+      "interestRate": 12.5
     },
     "returnsByType": {
       "STOCKS": 1500,
@@ -968,7 +968,7 @@ Get comprehensive dashboard data for user.
       "bestPerformer": {
         "id": "investment_id",
         "name": "Investment Name",
-        "returnRate": 15.2
+        "interestRate": 15.2
       }
     },
     "recentTransactions": [
@@ -1019,7 +1019,7 @@ Get comprehensive portfolio summary with detailed metrics.
     "totalInvested": 50000,
     "currentValue": 52500,
     "totalReturns": 2500,
-    "overallReturnRate": 5.0,
+    "overallinterestRate": 5.0,
     "investments": [
       {
         "id": "investment_id",
@@ -1027,20 +1027,20 @@ Get comprehensive portfolio summary with detailed metrics.
         "type": "STOCKS",
         "currentValue": 10500,
         "returns": 500,
-        "returnRate": 5.0,
+        "interestRate": 5.0,
         "weight": 20.0
       }
     ],
     "performanceMetrics": {
       "bestPerformer": {
         "name": "Investment Name",
-        "returnRate": 12.5
+        "interestRate": 12.5
       },
       "worstPerformer": {
         "name": "Investment Name",
-        "returnRate": 2.1
+        "interestRate": 2.1
       },
-      "averageReturnRate": 5.0
+      "averageinterestRate": 5.0
     },
     "assetAllocation": {
       "byType": {
@@ -1075,14 +1075,14 @@ Get performance trends over time.
       "month": "2025-01",
       "portfolioValue": 50000,
       "returns": 500,
-      "returnRate": 1.0,
+      "interestRate": 1.0,
       "investmentCount": 5
     },
     {
       "month": "2025-02",
       "portfolioValue": 51250,
       "returns": 1250,
-      "returnRate": 2.5,
+      "interestRate": 2.5,
       "investmentCount": 5
     }
   ]
@@ -1161,7 +1161,7 @@ Get monthly breakdown for specific year.
         "startingValue": 50000,
         "endingValue": 51250,
         "returns": 1250,
-        "returnRate": 2.5,
+        "interestRate": 2.5,
         "deposits": 1000,
         "withdrawals": 0,
         "netCashFlow": 1000,
@@ -1174,7 +1174,7 @@ Get monthly breakdown for specific year.
       "startingValue": 50000,
       "endingValue": 52500,
       "totalReturns": 2500,
-      "totalReturnRate": 5.0,
+      "totalinterestRate": 5.0,
       "totalDeposits": 2000,
       "totalWithdrawals": 500,
       "netCashFlow": 1500
@@ -1207,7 +1207,7 @@ Generate comprehensive financial report.
       "totalInvested": 50000,
       "currentValue": 52500,
       "totalReturns": 2500,
-      "overallReturnRate": 5.0
+      "overallinterestRate": 5.0
     },
     "performanceAnalysis": {
       "monthlyAverage": 208.33,
@@ -1221,7 +1221,7 @@ Generate comprehensive financial report.
         "name": "Investment Name",
         "performance": {
           "returns": 500,
-          "returnRate": 5.0,
+          "interestRate": 5.0,
           "riskLevel": "Medium"
         }
       }
@@ -1257,7 +1257,7 @@ Compare multiple investments.
         "type": "STOCKS",
         "currentValue": 10500,
         "returns": 500,
-        "returnRate": 5.0,
+        "interestRate": 5.0,
         "riskScore": 7.5
       },
       {
@@ -1266,7 +1266,7 @@ Compare multiple investments.
         "type": "BONDS",
         "currentValue": 10500,
         "returns": 300,
-        "returnRate": 3.0,
+        "interestRate": 3.0,
         "riskScore": 3.2
       }
     ],
@@ -1274,14 +1274,14 @@ Compare multiple investments.
       "bestPerformer": {
         "id": "investment_id_1",
         "name": "Investment 1",
-        "returnRate": 5.0
+        "interestRate": 5.0
       },
       "lowestRisk": {
         "id": "investment_id_2",
         "name": "Investment 2",
         "riskScore": 3.2
       },
-      "averageReturnRate": 4.0,
+      "averageinterestRate": 4.0,
       "totalValue": 21000
     },
     "recommendations": [

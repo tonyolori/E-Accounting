@@ -430,7 +430,7 @@ npx prisma db seed
    - Compound interest calculation logic
    - Simple vs compound interest options
    - Different compounding frequencies
-   - Return rate validations
+   -  Interest rate validations
 
 2. **Manual Returns Management**
    - Manual return entry endpoints

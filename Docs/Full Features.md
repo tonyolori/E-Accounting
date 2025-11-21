@@ -16,7 +16,7 @@ It provides tools to track investment performance, calculate returns (fixed and 
     - Start date
     - Duration or maturity date (optional)
     - Type of return (fixed or variable)
-    - Interest rate or expected monthly return (if applicable)
+    -  Interest rate or expected monthly return (if applicable)
 
 - **View All Investments**
   - Display all investments (Active, Completed, Cancelled)
@@ -24,13 +24,13 @@ It provides tools to track investment performance, calculate returns (fixed and 
     - Investment name
     - Current balance
     - Return type
-    - Monthly/Annual return rate
+    - Monthly/Annual  interest rate
     - Status
     - Start and end dates
 
 - **Update Investment**
   - Modify details such as:
-    - Interest rate
+    -  Interest rate
     - Balance
     - Return type
     - Duration

@@ -8,7 +8,7 @@
 /**
  * Calculate compound interest
  * @param {number} principal - Initial investment amount
- * @param {number} annualRate - Annual interest rate (as decimal, e.g., 0.05 for 5%)
+ * @param {number} annualRate - Annual  interest rate (as decimal, e.g., 0.05 for 5%)
  * @param {number} compoundingFrequency - Number of times interest is compounded per year (12 for monthly, 4 for quarterly, 1 for annually)
  * @param {number} years - Number of years
  * @returns {Object} Calculation results
@@ -46,7 +46,7 @@ function calculateCompoundInterest(principal, annualRate, compoundingFrequency, 
 /**
  * Calculate simple interest
  * @param {number} principal - Initial investment amount
- * @param {number} annualRate - Annual interest rate (as decimal or percentage)
+ * @param {number} annualRate - Annual  interest rate (as decimal or percentage)
  * @param {number} years - Number of years
  * @returns {Object} Calculation results
  */
@@ -76,7 +76,7 @@ function calculateSimpleInterest(principal, annualRate, years) {
 /**
  * Calculate monthly return amount for fixed-rate investments
  * @param {number} principal - Current balance
- * @param {number} annualRate - Annual interest rate (as decimal or percentage)
+ * @param {number} annualRate - Annual  interest rate (as decimal or percentage)
  * @param {boolean} isCompound - Whether to use compound calculation
  * @returns {Object} Monthly return calculation
  */
@@ -139,7 +139,7 @@ function calculateReturnPercentage(initialValue, currentValue) {
 }
 
 /**
- * Calculate annualized return rate
+ * Calculate annualized  interest rate
  * @param {number} initialValue - Starting value
  * @param {number} finalValue - Final value
  * @param {number} years - Number of years (can be decimal for partial years)
@@ -170,7 +170,7 @@ function calculateAnnualizedReturn(initialValue, finalValue, years) {
  * Calculate future value with regular monthly contributions
  * @param {number} initialPrincipal - Initial investment amount
  * @param {number} monthlyContribution - Monthly contribution amount
- * @param {number} annualRate - Annual interest rate (as decimal or percentage)
+ * @param {number} annualRate - Annual  interest rate (as decimal or percentage)
  * @param {number} years - Number of years
  * @returns {Object} Future value with contributions calculation
  */
